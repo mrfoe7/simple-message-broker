@@ -1,4 +1,4 @@
-module github.com/mrfoe7/test-task
+module github.com/mrfoe7/simple-message-broker
 
 go 1.16
 
