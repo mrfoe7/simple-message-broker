@@ -12,15 +12,14 @@ type Conn struct {
 }
 
 type Notifier struct {
-	// listners map[string]*Conn
-	listners map[string]interface{}
+	listners map[string]*Queue
 
 	l sync.RWMutex
 }
 
 func NewNotifier() *Notifier {
 	return &Notifier{
-		listners: make(map[string]interface{}),
+		listners: make(map[string]*Queue),
 	}
 }
 
@@ -28,7 +27,12 @@ func (n *Notifier) Notify(key string) {
 	n.l.RLock()
 	defer n.l.RUnlock()
 
-	if connV, exists := n.listners[key]; exists {
+	if q, exists := n.listners[key]; exists {
+		connV, err := q.Shift()
+		if err != nil {
+			log.Printf(errorTmpl, err)
+			return
+		}
 		conn, ok := connV.(*Conn)
 		if !ok {
 			log.Printf(errorTmpl, "cast queue to *Conn type")
@@ -38,7 +42,6 @@ func (n *Notifier) Notify(key string) {
 		case <-conn.ctx.Done():
 		default:
 			conn.ch <- struct{}{}
-			close(conn.ch)
 		}
 	}
 }
@@ -46,10 +49,25 @@ func (n *Notifier) Notify(key string) {
 func (n *Notifier) Subscribe(ctx context.Context, key string) <-chan struct{} {
 	ch := make(chan struct{})
 
+	var (
+		q      *Queue
+		exists bool
+	)
 	n.l.Lock()
-	n.listners[key] = &Conn{
-		ctx, ch,
+
+	q, exists = n.listners[key]
+	if !exists {
+		q = &Queue{}
 	}
+
+	q.Push(&Conn{
+		ctx, ch,
+	})
+
+	if !exists {
+		n.listners[key] = q
+	}
+
 	n.l.Unlock()
 
 	return ch

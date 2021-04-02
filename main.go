@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultPort   = 80
-	shutdownDelay = 1 * time.Second
+	shutdownDelay = 5 * time.Second
 
 	portFlag  = "p"
 	routerKey = "key"
@@ -98,7 +98,7 @@ func GetResponse(gq *GlobalQueue, key string, timeout int64) (status int, body [
 	switch {
 	case err != nil && err != errEmptyQueue:
 		status = http.StatusInternalServerError
-		log.Printf(warningTmpl, err)
+		log.Printf(errorTmpl, err)
 
 	case err == errEmptyQueue && timeout <= 0:
 		status = http.StatusNotFound
@@ -170,7 +170,7 @@ func getHandler(w http.ResponseWriter, req *http.Request) {
 	if timeoutStr != "" {
 		timeout, err = strconv.ParseInt(timeoutStr, 10, 0)
 		if err != nil {
-			log.Printf(warningTmpl, err)
+			log.Printf(errorTmpl, err)
 		}
 	}
 
