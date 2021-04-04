@@ -96,7 +96,7 @@ func GetResponse(gq *GlobalQueue, key string, timeout int64) (status int, body [
 	switch {
 	case err != nil && err != errEmptyQueue:
 		status = http.StatusInternalServerError
-		log.Printf(errorTmpl, err, "azaza")
+		log.Printf(errorTmpl, err)
 
 	case err == errEmptyQueue && timeout <= 0:
 		status = http.StatusNotFound
