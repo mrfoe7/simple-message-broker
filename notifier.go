@@ -24,8 +24,8 @@ func NewNotifier() *Notifier {
 }
 
 func (n *Notifier) Notify(key string) {
-	n.l.RLock()
-	defer n.l.RUnlock()
+	n.l.Lock()
+	defer n.l.Unlock()
 
 	if q, exists := n.listners[key]; exists {
 		connV, err := q.Shift()
@@ -38,10 +38,12 @@ func (n *Notifier) Notify(key string) {
 			log.Printf(errorTmpl, "cast queue to *Conn type")
 			return
 		}
+
 		select {
 		case <-conn.ctx.Done():
 		default:
 			conn.ch <- struct{}{}
+			close(conn.ch)
 		}
 	}
 }
@@ -53,22 +55,19 @@ func (n *Notifier) Subscribe(ctx context.Context, key string) <-chan struct{} {
 		q      *Queue
 		exists bool
 	)
+
 	n.l.Lock()
+	defer n.l.Unlock()
 
 	q, exists = n.listners[key]
 	if !exists {
 		q = &Queue{}
+		n.listners[key] = q
 	}
 
 	q.Push(&Conn{
 		ctx, ch,
 	})
-
-	if !exists {
-		n.listners[key] = q
-	}
-
-	n.l.Unlock()
 
 	return ch
 }

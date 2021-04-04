@@ -70,17 +70,15 @@ func (gq *GlobalQueue) Push(key, val string) {
 	)
 
 	gq.l.Lock()
+	defer gq.l.Unlock()
+
 	q, ok = gq.queues[key]
 	if !ok {
 		q = &Queue{}
+		gq.queues[key] = q
 	}
 
 	q.Push(val)
-
-	if !ok {
-		gq.queues[key] = q
-	}
-	gq.l.Unlock()
 
 	gq.notifier.Notify(key)
 }
@@ -98,7 +96,7 @@ func GetResponse(gq *GlobalQueue, key string, timeout int64) (status int, body [
 	switch {
 	case err != nil && err != errEmptyQueue:
 		status = http.StatusInternalServerError
-		log.Printf(errorTmpl, err)
+		log.Printf(errorTmpl, err, "azaza")
 
 	case err == errEmptyQueue && timeout <= 0:
 		status = http.StatusNotFound
@@ -112,18 +110,13 @@ func GetResponse(gq *GlobalQueue, key string, timeout int64) (status int, body [
 		}()
 
 		ch := gq.notifier.Subscribe(ctx, key)
-	loop:
-		for {
-			select {
-			case <-ctx.Done():
-				status = http.StatusNotFound
-				body = []byte("{ошибка, 404 not found}")
+		select {
+		case <-ctx.Done():
+			status = http.StatusNotFound
+			body = []byte("{ошибка, 404 not found}")
 
-				break loop
-			case <-ch:
-				timeout = 0
-				return GetResponse(gq, key, timeout)
-			}
+		case <-ch:
+			return GetResponse(gq, key, 0)
 		}
 
 	default:
