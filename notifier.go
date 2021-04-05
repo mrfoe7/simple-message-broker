@@ -14,7 +14,7 @@ type Conn struct {
 type Notifier struct {
 	listners map[string]*Queue
 
-	l sync.RWMutex
+	l sync.Mutex
 }
 
 func NewNotifier() *Notifier {
