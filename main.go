@@ -107,6 +107,7 @@ func GetResponse(gq *GlobalQueue, key string, timeout int64) (status int, body [
 
 		defer func() {
 			cancel()
+			gq.notifier.Shift(key)
 		}()
 
 		ch := gq.notifier.Subscribe(ctx, key)

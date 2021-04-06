@@ -18,3 +18,11 @@ func (q *Queue) Shift() (interface{}, error) {
 func (q *Queue) Push(val interface{}) {
 	q.data = append(q.data, val)
 }
+
+func (q *Queue) Get() (interface{}, error) {
+	if len(q.data) == 0 {
+		return "", errEmptyQueue
+	}
+
+	return q.data[0], nil
+}

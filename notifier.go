@@ -23,6 +23,29 @@ func NewNotifier() *Notifier {
 	}
 }
 
+func (n *Notifier) Shift(key string) {
+	n.l.Lock()
+	defer n.l.Unlock()
+
+	if q, exists := n.listners[key]; exists {
+		connV, err := q.Get()
+		if err != nil {
+			log.Printf(errorTmpl, err)
+			return
+		}
+		conn, ok := connV.(*Conn)
+		if !ok {
+			log.Printf(errorTmpl, "cast queue to *Conn type")
+			return
+		}
+		select {
+		case <-conn.ctx.Done():
+			q.Shift()
+		default:
+		}
+	}
+}
+
 func (n *Notifier) Notify(key string) {
 	n.l.Lock()
 	defer n.l.Unlock()
@@ -45,6 +68,8 @@ func (n *Notifier) Notify(key string) {
 			conn.ch <- struct{}{}
 			close(conn.ch)
 		}
+
+		log.Println("notify", n.listners)
 	}
 }
 
@@ -68,6 +93,8 @@ func (n *Notifier) Subscribe(ctx context.Context, key string) <-chan struct{} {
 	q.Push(&Conn{
 		ctx, ch,
 	})
+
+	log.Println("subscribe", n.listners)
 
 	return ch
 }
